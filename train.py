@@ -29,7 +29,7 @@ def main():
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0001, weight_decay=1e-4)
 
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode='min', factor=0.5, patience=3, verbose=True
+        optimizer, mode='min', factor=0.5, patience=3
     )
 
     print("Starting the production training engine...")
@@ -42,7 +42,7 @@ def main():
         scheduler=scheduler,
         num_epochs=50, 
         device=device,
-        patience=5
+        patience=20
     )
 
 if __name__ == "__main__":
