@@ -2,3 +2,5 @@ venv/
 *.npy
 *.wav
 *.mp3
+*.webm
+*.m4a
