@@ -3,7 +3,10 @@ import numpy as np
 import torch
 import sys
 import os
+import warnings
 
+warnings.filterwarnings('ignore', category=UserWarning)
+warnings.filterwarnings('ignore', category=FutureWarning)
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 from src.utils.logger import get_logger
@@ -22,12 +25,12 @@ def process_single_audio(file_path, offset=0.0, duration=16.0, sr=22050, n_mels=
         
         mel_tensor = torch.tensor(mel_spec_db, dtype=torch.float32).unsqueeze(0) 
 
-        f0, _, _ = librosa.pyin(y, fmin=librosa.note_to_hz('C2'), fmax=librosa.note_to_hz('C7'))
+        f0 = librosa.yin(y=y, fmin=librosa.note_to_hz('C2'), fmax=librosa.note_to_hz('C7'))
         f0 = np.nan_to_num(f0) 
         
         f0 = np.clip(f0, 0, max_pitch) / max_pitch
         
-        pitch_tensor = torch.tensor(f0, dtype=torch.float32).unsqueeze(0)
+        pitch_tensor = torch.tensor(f0, dtype=torch.float32)
 
         return mel_tensor, pitch_tensor
     except Exception as e:

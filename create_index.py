@@ -3,7 +3,12 @@ import os
 import sys
 import numpy as np
 import librosa
+from tqdm import tqdm
+import warnings
+import concurrent.futures
 
+warnings.filterwarnings('ignore', category=UserWarning)
+warnings.filterwarnings('ignore', category=FutureWarning)
 
 sys.path.append(os.path.join(os.path.dirname(__file__)))
 from src.utils.logger import get_logger
@@ -12,6 +17,26 @@ logger = get_logger(__name__)
 from src.data.preprocess import process_single_audio 
 from src.models.siamese import SiameseNetwork
 from src.utils.config import EMBEDDING_DIM
+
+def extract_song_features(song_path, chunk_length_sec):
+    try:
+        duration = librosa.get_duration(path=song_path)
+    except Exception as e:
+        return None, f"Failed to get duration: {e}"
+        
+    starts = np.arange(0, duration - chunk_length_sec, chunk_length_sec)
+    features = []
+    for start_time in starts:
+        try:
+            mel_tensor, pitch_tensor = process_single_audio(
+                song_path, 
+                offset=start_time, 
+                duration=chunk_length_sec
+            )
+            features.append((mel_tensor, pitch_tensor))
+        except Exception as e:
+            continue
+    return features, None
 
 def build_search_index(model_path, songs_dir, output_index_path, device='cpu'):
     try:
@@ -27,34 +52,37 @@ def build_search_index(model_path, songs_dir, output_index_path, device='cpu'):
         CHUNK_LENGTH_SEC = 16 
         
         print(f"Scanning directory: {songs_dir}")
+        num_workers = max(1, os.cpu_count() - 1)
+        print(f"Extracting features using {num_workers} parallel workers...")
         
         with torch.no_grad():
-            for filename in os.listdir(songs_dir):
-                if filename.lower().endswith(valid_extensions):
-                    song_path = os.path.join(songs_dir, filename)
-                    song_name = os.path.splitext(filename)[0]
-                    
-                    print(f"Chopping and Indexing: {song_name}...")
-                    
-                    duration = librosa.get_duration(path=song_path)
-                    chunk_embeddings = []
-                    
-                    for start_time in np.arange(0, duration - CHUNK_LENGTH_SEC, CHUNK_LENGTH_SEC):
+            valid_files = [f for f in os.listdir(songs_dir) if f.lower().endswith(valid_extensions)]
+            
+            with concurrent.futures.ProcessPoolExecutor(max_workers=num_workers) as executor:
+                future_to_song = {
+                    executor.submit(extract_song_features, os.path.join(songs_dir, filename), CHUNK_LENGTH_SEC): os.path.splitext(filename)[0]
+                    for filename in valid_files
+                }
+                
+                for future in tqdm(concurrent.futures.as_completed(future_to_song), total=len(valid_files), desc="Indexing Songs"):
+                    song_name = future_to_song[future]
+                    try:
+                        features, error = future.result()
+                        if error:
+                            logger.warning(f"Error for {song_name}: {error}")
+                            continue
+                            
+                        if not features:
+                            continue
+                            
+                        mel_batch = torch.stack([f[0] for f in features]).to(device)
+                        pitch_batch = torch.stack([f[1] for f in features]).to(device)
                         
-                        mel_tensor, pitch_tensor = process_single_audio(
-                            song_path, 
-                            offset=start_time, 
-                            duration=CHUNK_LENGTH_SEC
-                        )
                         
-                        mel_tensor = mel_tensor.unsqueeze(0).to(device)
-                        pitch_tensor = pitch_tensor.unsqueeze(0).to(device)
-
-                        embedding = model(mel_tensor, pitch_tensor)
-                        chunk_embeddings.append(embedding.squeeze(0).cpu().numpy())
-                    
-                    if len(chunk_embeddings) > 0:
-                        song_database[song_name] = np.array(chunk_embeddings)
+                        embeddings = model(mel_batch, pitch_batch)
+                        song_database[song_name] = embeddings.cpu().numpy()
+                    except Exception as e:
+                        logger.warning(f"Failed to process {song_name}: {e}")
 
         print(f"\nSuccessfully indexed {len(song_database)} songs (thousands of chunks!).")
         

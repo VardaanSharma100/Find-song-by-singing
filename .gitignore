@@ -1,6 +1,14 @@
-venv/
+﻿venv/
 *.npy
 *.wav
 *.mp3
 *.webm
 *.m4a
+__pycache__/
+/data/
+/models/
+/logs/
+/raw/
+*.pt
+*.pth
+temp_downloads/

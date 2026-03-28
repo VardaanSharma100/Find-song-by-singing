@@ -29,7 +29,7 @@ def record_hum(duration=16, sample_rate=22050, filename="temp_hum.wav"):
 
 def search_database(hum_vector, database_path, url_mapping_path):
     try:
-        song_db = torch.load(database_path)
+        song_db = torch.load(database_path, weights_only=False)
         
         with open(url_mapping_path, 'r', encoding='utf-8') as f:
             url_map = json.load(f)
@@ -49,7 +49,11 @@ def search_database(hum_vector, database_path, url_mapping_path):
                 best_similarity_score = max_sim_for_song
                 best_match_name = song_name
 
-        youtube_link = url_map.get(best_match_name, "No Link Found")
+        youtube_link = url_map.get(best_match_name)
+        if not youtube_link or youtube_link == "No Link Found":
+            import urllib.parse
+            search_query = urllib.parse.quote(best_match_name)
+            youtube_link = f"https://www.youtube.com/results?search_query={search_query}"
         
         logger.info(f"Successfully matched: {best_match_name} with score {best_similarity_score}")
         return best_match_name, best_similarity_score, youtube_link
@@ -63,7 +67,7 @@ def main():
         
         print("Loading AI...")
         model = SiameseNetwork(embedding_dim=EMBEDDING_DIM)
-        model.load_state_dict(torch.load("models/best_hum_model.pth", map_location=device))
+        model.load_state_dict(torch.load("models/best_hum_model.pth", map_location=device, weights_only=True))
         model.to(device)
         model.eval() 
         
