@@ -6,7 +6,9 @@ This repository contains an end-to-end Machine Learning system designed to accur
 
 Watch the full system in action (Frontend + WebGL + Backend + PyTorch):
 
-<video src="proof_of_completion.mp4" controls width="100%"></video>
+![Demo Video](./proof_demo.gif)
+
+*(Note: The above is a GIF preview. **[Click Here to watch the full 1080p Video WITH Audio!](./proof_of_completion.mp4)**)*
 
 ## 🧠 Deep Learning Architecture
 
