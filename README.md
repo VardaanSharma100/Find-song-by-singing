@@ -45,7 +45,7 @@ To make this model interactable from a user interface, it is wrapped in an async
 ### Core features:
 *   **Hardware Agnostic:** Automatically checks `torch.cuda.is_available()` to seamlessly route matrix multiplications on a GPU if detected.
 *   **Stateless Inference:** The network's frozen weights (`models/best_hum_model.pth`) are kept resident in memory.
-*   **CORS & Blob Handling:** Handles raw binary chunking, storing `multipart/form-data` uploads into temporary files instantly passed to the Librosa audio pipeline.
+*   **CORS & Blob Handling:** Handles raw binary chunking, storing `multipart/form-data` uploads into the temporary files instantly passed to the Librosa audio pipeline.
 
 ### API Routing
 *   `POST /` : Accepts an `UploadFile` (the `.wav` hum audio blob). Runs the Siamese model -> calculates cosine threshold -> returns `{"prediction": "Song Title"}`.
